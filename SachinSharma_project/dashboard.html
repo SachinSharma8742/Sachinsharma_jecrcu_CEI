@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>X Education - Lead Scoring Dashboard</title>
+    <link rel="stylesheet" href="dashboard.css">
+    <!-- Chart.js and PapaParse CDNs -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
+</head>
+<body>
+
+    <div class="container">
+        <header>
+            <div>
+                <h1>Lead Scoring Dashboard</h1>
+                <div class="subtitle">Assign, prioritize, and optimize sales resources for X Education leads</div>
+            </div>
+            
+            <div class="upload-container" style="display: flex; gap: 1rem; align-items: center;">
+                <input type="file" id="csv-file" accept=".csv" style="display: none;">
+                <button class="btn-primary" id="upload-zone" style="margin-top: 0; padding: 0.65rem 1.25rem;">
+                    Upload Leads CSV
+                </button>
+            </div>
+        </header>
+
+        <!-- KPI Summary Cards -->
+        <div class="kpi-grid">
+            <div class="kpi-card kpi-total">
+                <div class="kpi-title">Total Leads</div>
+                <div class="kpi-value" id="kpi-total-leads">0</div>
+                <div class="kpi-desc">Number of prospects in active pipeline</div>
+            </div>
+            <div class="kpi-card kpi-conv">
+                <div class="kpi-title">Avg Lead Score</div>
+                <div class="kpi-value" id="kpi-avg-score">0</div>
+                <div class="kpi-desc">Mean conversion score of leads</div>
+            </div>
+            <div class="kpi-card kpi-hot">
+                <div class="kpi-title">Hot Leads</div>
+                <div class="kpi-value" id="kpi-hot-leads">0</div>
+                <div class="kpi-desc">Leads above probability threshold</div>
+            </div>
+            <div class="kpi-card kpi-warm">
+                <div class="kpi-title">Conversion Target</div>
+                <div class="kpi-value" id="kpi-projected-conv">80%</div>
+                <div class="kpi-desc">Projected precision for hot leads</div>
+            </div>
+        </div>
+
+        <!-- Dashboard Layout -->
+        <div class="dashboard-layout">
+            
+            <!-- Left Side: Table and Visualizations -->
+            <div>
+                <!-- Tabs to Switch Models -->
+                <div class="tab-nav">
+                    <button class="tab-btn active" data-tab="no_tags">Model A: Pre-Contact (No Tags)</button>
+                    <button class="tab-btn" data-tab="with_tags">Model B: Dynamic CRM (With Tags)</button>
+                </div>
+
+                <!-- Chart Card -->
+                <div class="card" style="display: grid; grid-template-columns: 1fr 1.2fr; gap: 1.5rem; min-height: 320px;">
+                    <div>
+                        <div class="kpi-title" style="margin-bottom: 1rem;">Score Distribution</div>
+                        <div style="height: 220px; position: relative;">
+                            <canvas id="score-distribution-chart"></canvas>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="kpi-title" style="margin-bottom: 1rem;">Hot Leads by Source</div>
+                        <div style="height: 220px; position: relative;">
+                            <canvas id="lead-sources-chart"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Table Card -->
+                <div class="card">
+                    <div class="card-title">
+                        <span>Leads Pipeline</span>
+                        <div class="controls-bar" style="margin-bottom: 0;">
+                            <input type="text" id="search-box" class="search-input" placeholder="Search Lead #, Source, Occupation...">
+                            <select id="filter-source" class="select-filter">
+                                <option value="">All Sources</option>
+                            </select>
+                            <select id="filter-priority" class="select-filter">
+                                <option value="">All Priorities</option>
+                                <option value="Hot Lead">Hot Leads Only</option>
+                                <option value="Cold Lead">Cold Leads Only</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="table-wrapper">
+                        <table id="leads-table">
+                            <thead>
+                                <tr>
+                                    <th>Lead Number</th>
+                                    <th>Lead Source</th>
+                                    <th>Occupation</th>
+                                    <th>Last Activity</th>
+                                    <th>CRM Tag</th>
+                                    <th>Lead Score</th>
+                                    <th>Priority</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <!-- JS-generated rows -->
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="pagination">
+                        <span id="page-info">Page 1 of 1</span>
+                        <div class="pagination-buttons">
+                            <button class="page-btn" id="btn-prev" disabled>Prev</button>
+                            <button class="page-btn" id="btn-next" disabled>Next</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Side: Lead Scoring Simulator -->
+            <div>
+                <div class="card">
+                    <div class="card-title">Lead Score Simulator</div>
+                    <form id="sim-form" onsubmit="return false;">
+                        
+                        <div class="form-group">
+                            <label for="sim-email">Do Not Email</label>
+                            <select id="sim-email" class="form-control">
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="sim-time">Time Spent on Website (seconds)</label>
+                            <input type="number" id="sim-time" class="form-control" placeholder="e.g. 500" min="0" max="3000" value="300">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="sim-origin">Lead Origin</label>
+                            <select id="sim-origin" class="form-control">
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="sim-source">Lead Source</label>
+                            <select id="sim-source" class="form-control">
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="sim-occ">What is your current occupation</label>
+                            <select id="sim-occ" class="form-control">
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="sim-spec">Specialization</label>
+                            <select id="sim-spec" class="form-control">
+                            </select>
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="sim-activity">Last Activity</label>
+                                <select id="sim-activity" class="form-control">
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="sim-notable">Notable Activity</label>
+                                <select id="sim-notable" class="form-control">
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- Tag field (Only relevant for Model B, but shown/hidden or just disabled for Model A) -->
+                        <div class="form-group" id="sim-tag-group">
+                            <label for="sim-tag">CRM Tag (Model B Only)</label>
+                            <select id="sim-tag" class="form-control">
+                            </select>
+                        </div>
+
+                        <button class="btn-primary" id="btn-run-sim">Calculate Lead Score</button>
+                    </form>
+
+                    <!-- Score Result Box -->
+                    <div class="output-box" id="sim-output">
+                        <div class="output-header">
+                            <span class="output-title">SIMULATED LEAD RESULT</span>
+                            <span class="badge" id="sim-out-badge">HOT LEAD</span>
+                        </div>
+                        <div class="output-score" id="sim-out-score">85</div>
+                        <div class="output-prob" id="sim-out-prob">Conversion Likelihood: 85%</div>
+                        <div class="output-advice" id="sim-out-advice">
+                            Action Advice will populate here...
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <script src="dashboard.js"></script>
+</body>
+</html>
